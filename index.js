@@ -13,20 +13,19 @@ var headers = {
     "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
 }
 
-app.get('/', (req, res) => {
+function onRequest(req, res){
     requestify.request('https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY', {
         method: 'GET',
         headers: headers,
         dataType: 'json'
     }).then(function (response) {
-        res.json(JSON.stringify(response.getBody()));
+        res.write(JSON.stringify(response.getBody()));
         res.end();
     }).catch(err => {
 
-    })
-})
+    });
+}
+http.createServer((onRequest)).listen(port)
 
 
-app.listen(port, () => {
-    console.log(port)
-})
+
