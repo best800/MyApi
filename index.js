@@ -36,8 +36,8 @@ function onRequest(req, res) {
         axios.get('https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY')
             .then((response) => response.data).then(rs => {
                 res.writeHead(200, { "Content-Type": "json" })
-                res.write(JSON.stringify(rs));
-                return res.end();
+                res.write(JSON.stringify(rs))
+                   res.end();  
             })
             .catch(function (error) {
                 // handle error
