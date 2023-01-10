@@ -14,58 +14,195 @@
             text-align: center;
         }
 
-        .table {
+        table {
             width: 100%;
+            border-collapse: collapse;
         }
+
+        table td,
+        table,
+        th {
+            border: 0.5pt solid windowtext;
+            padding: 4px;
+        }
+
+        table
     </style>
 </head>
 
 <body>
     <div class="container-sm">
-        <table class="table table-bordered">
+        <table>
+
             <tr class="text-center">
                 <th colspan="3" id="currentDate">
-                    NIFTY OPTION CHAIN ANALYSIS
+                    BANK NIFTY CHAIN ANALYSIS
+                </th>
+            </tr>
+            <tr class="text-center">
+                <th colspan="3" id="currentDate">
+                    Market Status
                 </th>
             </tr>
             <tr class="text-center">
                 <th>
-                    SPOT PRICE
+                    Last
                 </th>
                 <th>
-                    TOTAL ITM
+                    Change
                 </th>
                 <th>
-                    TOTAL OTM
+                    Change in %
                 </th>
             </tr>
             <tr class="text-center">
-                <td>454551</td>
-                <td>1547852</td>
-                <td>5658668</td>
+                <th>
+                    15487
+                </th>
+                <th>
+                    -5785
+                </th>
+                <th>
+                    -1.26
+                </th>
             </tr>
             <tr class="text-center">
-                <th colspan="3">TOTAL PCR: 257852</th>
-            </tr>
-        </table>
-        <table class="table table-bordered">
-            <tr class="text-center">
-                <td style="width:50% !important">IN CALLS</td>
-                <td style="width:50% !important">IN PUTS</td>
+                <td colspan="3">Option Chain Summary</td>
             </tr>
             <tr class="text-center">
-                <td style="width:50% !important">124542</td>
-                <td style="width:50% !important">548785</td>
+                <td colspan="1" width="50%">Mid Calls :5</td>
+                <td colspan="2" width="50%">Mid Puts :5</td>
+            </tr>
+            <tr>
+                <td colspan="1" width="50%">
+                    <div class="row">
+                        <div class="col-6" style="text-align: right;">Total:</div>
+                        <div id="mid-call" class="col-6 text-start" style="text-align: left">4547</div>
+                    </div>
+                </td>
+                <td colspan="2" width="50%">
+                    <div class="row">
+                        <div class="col-6" style="text-align: right;">Total:</div>
+                        <div id="mid-put" class="col-6 text-start" style="text-align: left">4547</div>
+                    </div>
+                </td>
             </tr>
             <tr class="text-center">
-                <th colspan="3">PUT CALL RATIO</th>
+                <td colspan="3">Spot Price : <span id="spot-price"></span></td>
             </tr>
             <tr class="text-center">
-                <th colspan="3">6878952</th>
+                <td colspan="3">Strik Price : <span id="strike-price"></span></td>
+            </tr>
+            <tr class="text-center">
+                <th colspan="3">Mid PCR: <span id="mid-pcr"></span></th>
+            </tr>
+            <tr class="text-center">
+                <th colspan="3">Total PCR: <span id="total-pcr"></span></th>
             </tr>
         </table>
     </div>
+    <script>
+        $(document).ready(function () {
+            var headers = {
+                "accept-language": "en-US,en;q=0.9",
+                "Access-Control-Allow-Origin": "*",
+            }
 
+        
+            setInterval(()=>{
+                getData
+            },10000)
+           
+        function getData(){
+            $.ajax({
+                url: '/nifty',
+                type: 'GET',
+                headers: headers,
+                dataType: 'json',
+                success: function (data) {
+                    /* console.log(data) */
+                    getInfo(data)
+                },
+                error: function (error, status, err) {
+                    console.log(error)
+                    console.log(status)
+                    console.log(err)
+                }
+
+            })
+
+        }
+
+            function getInfo(data) {
+               
+                /* let json = JSON.parse(data); */
+                let filteredRecords = data.filtered.data;
+
+               
+                let currentMarketIndex = filteredRecords.findIndex(x => x.strikePrice > x.CE.underlyingValue);
+
+                let currentMarketPrice = filteredRecords[currentMarketIndex]
+                let rest = filteredRecords.length - currentMarketIndex;
+
+                let putCallsList = filteredRecords.map((value, idx, arr) => {
+   
+                    return { calls: value.CE, puts: value.PE }
+                })
+
+                let spotPrice = $(putCallsList).first()[0].calls.underlyingValue
+               
+                let upMarketList = putCallsList.slice(0, currentMarketIndex + 1)
+                let downMarketList = putCallsList.slice((currentMarketIndex + 1))
+                let Top5putCalls = { totalCall: 0, totalPut: 0 }
+
+                upMarketList.slice(-5).reduce((prev, curr, i, arr) => {
+                    if (prev) {
+                        Top5putCalls["totalCall"] += curr.calls.changeinOpenInterest 
+                        Top5putCalls["totalPut"] += curr.puts.changeinOpenInterest 
+                        return
+                    }
+                    Top5putCalls["totalCall"] += curr.calls.changeinOpenInterest
+                    Top5putCalls["totalPut"] += curr.puts.changeinOpenInterest
+                })
+
+                let bottom5putCalls = { totalCall: 0, totalPut: 0 }
+                downMarketList.slice(0, 5).reduce((prev, curr, i, arr) => {
+                    if (prev) {
+                        bottom5putCalls["totalCall"] += curr.calls.changeinOpenInterest + prev.calls.changeinOpenInterest
+                        bottom5putCalls["totalPut"] += curr.puts.changeinOpenInterest + prev.puts.changeinOpenInterest
+                        return
+                    }
+                    bottom5putCalls["totalCall"] += curr.calls.changeinOpenInterest
+                    bottom5putCalls["totalPut"] += curr.puts.changeinOpenInterest
+
+                })
+
+                let total_mid_calls = Top5putCalls.totalCall + bottom5putCalls.totalCall;
+                let total_mid_puts = Top5putCalls.totalPut + bottom5putCalls.totalPut;
+
+                let midPcr = total_mid_puts / total_mid_calls;
+                console.log('Total mid Pcr ' + midPcr)
+                let acc ={totalPut:0,totalCall:0}
+                filteredRecords.reduce((prev, curr) => {
+                    acc['totalPut'] += curr.PE.changeinOpenInterest
+                    acc['totalCall'] += curr.CE.changeinOpenInterest
+
+                })
+
+                let total_pcr = acc.totalPut / acc.totalCall
+                console.log('Total Pcr ' + total_pcr)
+
+                $('#spot-price').html(spotPrice)
+                $('#mid-pcr').html(midPcr)
+                $('#total-pcr').html(total_pcr)
+                $('#mid-call').html(total_mid_calls)
+                $('#mid-put').html(total_mid_puts)
+                $('#strike-price').html(currentMarketPrice.strikePrice)
+
+            }
+        })
+
+    </script>
 </body>
 
 
